@@ -20,6 +20,8 @@ public @interface PerformanceTest
 
     int stablePasses() default -1;
 
+    double stabilityPercentage() default -1;
+    
     int runsToAverage() default -1;
 
     String testName() default "";
