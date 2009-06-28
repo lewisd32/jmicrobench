@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="grid" basedir="." default="build">
+   
+	<import file="build-init.xml" />
+    <import file="scripts/build-main.xml" />
+    <import file="scripts/build-test.xml" />
+	<import file="build-dummy.xml" />
+
+    <target name="build" depends="test,dist" />
+
+    <target name="test" depends="unit-test">
+    </target>
+
+    <target name="dist" depends="compile">
+    	<mkdir dir="${main.dist}" />
+    	<jar destfile="${main.dist}/jmicrobench.jar" basedir="${main.dest}">
+    		<fileset dir="${main.dest}">
+    			<exclude name="**/jmicrobench.properties" />
+    	        <include name="**/*" />
+    		</fileset>
+    		<fileset dir="${main.src}">
+    	        <include name="**/*.java" />
+    		</fileset>
+		</jar>
+    </target>
+
+</project>

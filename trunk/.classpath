@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="src" path="src/test/java"/>
+	<classpathentry kind="src" path="src/test/resources"/>
+	<classpathentry kind="src" path="src/main/resources"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/main/common/junit-4.5.jar"/>
+	<classpathentry kind="lib" path="lib/main/common/junit-dep-4.5.jar"/>
+	<classpathentry kind="lib" path="lib/main/common/log4j-1.2.13.jar"/>
+	<classpathentry kind="lib" path="lib/test/common/jmock-2.5.1.jar"/>
+	<classpathentry kind="lib" path="lib/test/common/jmock-junit4-2.5.1.jar"/>
+	<classpathentry kind="lib" path="lib/test/common/jmock-script-2.5.1.jar"/>
+	<classpathentry kind="lib" path="lib/main/common/mysql-connector-java-5.1.6.jar"/>
+	<classpathentry kind="lib" path="lib/main/common/lewisd-common.jar" sourcepath="/common"/>
+	<classpathentry kind="output" path="classes"/>
+</classpath>
