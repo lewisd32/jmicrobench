@@ -10,7 +10,7 @@ import com.lewisd.jmicrobench.PerformanceTestResults;
 public interface TestResultsDao
 {
 
-    void storeResults(List<PerformanceTestResults> results) throws SQLException;
+    void storeResults(List<? extends PerformanceTestResults> results) throws SQLException;
 
     List<BuildInfo> getRecentBuilds(int count) throws SQLException;
 

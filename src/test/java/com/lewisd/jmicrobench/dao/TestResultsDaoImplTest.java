@@ -95,7 +95,7 @@ public class TestResultsDaoImplTest
     private PerformanceTestResults setupResults(BuildInfo build, String testGroupName, String testName)
     {
         int revision = build.getRevision();
-        PerformanceTestResults values = new PerformanceTestResultsImpl(build, testGroupName, testName);
+        PerformanceTestResultsImpl values = new PerformanceTestResultsImpl(build, testGroupName, testName);
         values.setDurationNanos(TimeUnit.MILLISECONDS.toNanos(5L * revision));
         values.setNumberOfOperations(100000L * revision);
 

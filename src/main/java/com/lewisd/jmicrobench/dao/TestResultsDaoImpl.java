@@ -150,7 +150,7 @@ public class TestResultsDaoImpl implements TestResultsDao
     }
 
     @Override
-    public void storeResults(List<PerformanceTestResults> resultsList) throws SQLException
+    public void storeResults(List<? extends PerformanceTestResults> resultsList) throws SQLException
     {
         Connection conn = getConnection();
         try

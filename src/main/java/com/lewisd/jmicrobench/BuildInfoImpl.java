@@ -1,9 +1,16 @@
 package com.lewisd.jmicrobench;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import org.apache.log4j.Logger;
 
 public class BuildInfoImpl implements BuildInfo
 {
+    private static final Logger LOG = Logger.getLogger(BuildInfoImpl.class);
+
+    private static BuildInfoImpl currentBuild;
 
     private final int revision;
     private final Date timestamp;
@@ -60,6 +67,49 @@ public class BuildInfoImpl implements BuildInfo
         else if (!timestamp.equals(other.timestamp))
             return false;
         return true;
+    }
+
+    private static Date getBuildTimestamp()
+    {
+        String timestampString = System.getProperty("build.timestamp");
+        if (timestampString == null || timestampString.isEmpty())
+        {
+            LOG.warn("No build.timestamp system property");
+            return new Date();
+        }
+        String formatString = PropertiesHelper.getProperty("build.timestamp.format");
+        if (formatString == null)
+        {
+            throw new RuntimeException("No build.timestamp.format system property");
+        }
+        SimpleDateFormat formatter = new SimpleDateFormat(formatString);
+        try
+        {
+            return formatter.parse(timestampString);
+        }
+        catch (ParseException e)
+        {
+            throw new RuntimeException("Error parsing build timestamp", e);
+        }
+    }
+
+    private static int getRevisionProperty()
+    {
+        String revision = System.getProperty("build.revision");
+        if (revision != null && !revision.isEmpty())
+        {
+            return Integer.parseInt(revision);
+        }
+        return -1;
+    }
+
+    static BuildInfo getCurrentBuild()
+    {
+        if (currentBuild == null)
+        {
+            currentBuild = new BuildInfoImpl(getRevisionProperty(), getBuildTimestamp());
+        }
+        return currentBuild;
     }
 
 }

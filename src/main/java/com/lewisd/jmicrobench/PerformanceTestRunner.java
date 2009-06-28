@@ -29,11 +29,12 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
     private static final int DEFAULT_RUNS_TO_AVERAGE = Integer.parseInt(PropertiesHelper.getProperty("build.performance.averaged.runs", "3"));
     private static final long DEFAULT_EXPECTED_DURATION = Long.parseLong(PropertiesHelper.getProperty("build.performance.duration", "3000"));
     private static final long DEFAULT_WARMUP_DURATION = Long.parseLong(PropertiesHelper.getProperty("build.performance.warmup.duration", "0"));
+    private static final String DEFAULT_PROJECT_NAME = PropertiesHelper.getProperty("build.performance.project.name", "");
 
     private static final Logger LOG = Logger.getLogger(PerformanceTestRunner.class);
+
     private static final int RESULTS_REMOVED_BY_PRUNING = 2;
 
-    private final Field resultsCollectorField;
     private boolean warmedUp = false;
     private int warmupPasses;
     private long warmupDuration;
@@ -44,47 +45,32 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
     private long totalDurationNanos;
     private String testName;
     private String groupName;
+    private String projectName;
     private final Class testClass;
 
     private long startTimeNanos = -1;
     private long endTimeNanos = -1;
     private int currentPass;
     private List<PerformanceTestResults> resultsList;
-    private PerformanceTestResultsCollector resultsCollector;
+    private PerformanceTestController resultsCollector;
 
     public PerformanceTestRunner(Class testClass) throws InitializationError
     {
         super(testClass);
         this.testClass = testClass;
-        resultsCollectorField = findResultsCollectorField(testClass);
-        resultsCollectorField.setAccessible(true);
     }
 
-    public boolean isDone()
+    public boolean testHasRunLongEnough()
     {
-        boolean addedDuration = false;
-        if (resultsCollector.getResults().getDurationNanos() == null)
+        if (expectedDuration < 0)
         {
-            addedDuration = true;
-            resultsCollector.setDurationNanos(getActualDurationNanos());
+            return true;
         }
-        try
+        else
         {
-            return checkIfDone();
+            long timeSpent = TimeUnit.NANOSECONDS.toMillis(getActualDurationNanos());
+            return (timeSpent >= expectedDuration);
         }
-        finally
-        {
-            if (addedDuration)
-            {
-                resultsCollector.setDurationNanos(null);
-            }
-        }
-    }
-
-    public boolean shouldRun()
-    {
-        long timeSpent = TimeUnit.NANOSECONDS.toMillis(getActualDurationNanos());
-        return (timeSpent < expectedDuration);
     }
 
     public void startDurationTimer()
@@ -119,21 +105,6 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         return totalDurationNanos;
     }
 
-    static Field findResultsCollectorField(Class testClass) throws InitializationError
-    {
-        for (Class klass = testClass; klass != Object.class; klass = klass.getSuperclass())
-        {
-            for (Field field : klass.getDeclaredFields())
-            {
-                if (PerformanceTestResultsCollector.class.isAssignableFrom(field.getType()))
-                {
-                    return field;
-                }
-            }
-        }
-        throw new InitializationError("no PerformanceTestResultsCollector found in test class " + testClass);
-    }
-
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object test)
     {
@@ -155,24 +126,6 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         };
     }
 
-    protected PerformanceTestResultsCollector getResultsCollector(Object test)
-    {
-        try
-        {
-            PerformanceTestResultsCollector results = (PerformanceTestResultsCollector) resultsCollectorField.get(test);
-            results.setRunner(PerformanceTestRunner.this);
-            return results;
-        }
-        catch (IllegalArgumentException e)
-        {
-            throw new RuntimeException(e);
-        }
-        catch (IllegalAccessException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
     @Override
     protected Statement withAfters(FrameworkMethod method, Object target, Statement statement)
     {
@@ -192,6 +145,51 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         };
     }
 
+    protected PerformanceTestController getResultsCollector(Object test)
+    {
+        try
+        {
+            Field resultsCollectorField = findResultsCollectorField(testClass);
+            if (resultsCollectorField != null)
+            {
+                resultsCollectorField.setAccessible(true);
+                PerformanceTestController controller = (PerformanceTestController) resultsCollectorField.get(test);
+                return controller;
+            }
+            else
+            {
+                return new PerformanceTestController();
+            }
+        }
+        catch (InitializationError e)
+        {
+            throw new RuntimeException(e);
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw new RuntimeException(e);
+        }
+        catch (IllegalAccessException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Field findResultsCollectorField(Class testClass) throws InitializationError
+    {
+        for (Class klass = testClass; klass != Object.class; klass = klass.getSuperclass())
+        {
+            for (Field field : klass.getDeclaredFields())
+            {
+                if (PerformanceTestController.class.isAssignableFrom(field.getType()))
+                {
+                    return field;
+                }
+            }
+        }
+        return null;
+    }
+    
     private void runTestUntilStable(FrameworkMethod method, Object test, Statement statement) throws Throwable
     {
         resultsCollector = getResultsCollector(test);
@@ -204,6 +202,7 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         this.warmupDuration = DEFAULT_WARMUP_DURATION;
         this.groupName = method.getName();
         this.testName = testClass.getSimpleName();
+        this.projectName = DEFAULT_PROJECT_NAME;
 
         PerformanceTest configuration;
 
@@ -212,9 +211,13 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
 
         configuration = method.getAnnotation(PerformanceTest.class);
         configureFromAnnotation(configuration);
+        
+        if (projectName.equals(""))
+        {
+            throw new IllegalStateException("'projectName' must be configured in jmicrobench.properties on PerformanceTest annotation");
+        }
 
         resultsList = new LinkedList<PerformanceTestResults>();
-        resultsCollector.setupTest(groupName, testName);
 
         warmedUp = false;
         if (warmupPasses == 0 && warmupDuration == 0)
@@ -223,9 +226,10 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         }
 
         currentPass = 0;
-        while (!isDone())
+        while (!isTestDone())
         {
-            resultsCollector.setupTest(groupName, testName);
+            InProgressPerformanceTestResults results = new InProgressPerformanceTestResults(BuildInfoImpl.getCurrentBuild(), groupName, testName, this);
+            resultsCollector.setupTest(results, this);
             totalDurationNanos = 0;
             startTimeNanos = -1;
             endTimeNanos = -1;
@@ -233,20 +237,25 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             LOG.info("Running " + (warmedUp ? "real " : "warmup ") + "pass for " + testName(method));
             // add the results class before we run, so that it's counted by
             // calls to isDone from within the test method
-            resultsList.add(resultsCollector.getResults());
+            resultsList.add(results);
+
             statement.evaluate();
-            if (resultsCollector.getResults().getDurationNanos() == null)
+            while (!testHasRunLongEnough())
             {
-                resultsCollector.setDurationNanos(getActualDurationNanos());
+                statement.evaluate();
+            }
+            
+            if (!results.hasDurationNanos())
+            {
+                results.setDurationNanos(getActualDurationNanos());
             }
             // LOG.info(String.format("%.0f",
-            // resultsCollector.getResults().getOperationsPerSecond()));
+            // results.getOperationsPerSecond()));
         }
         PerformanceTestResults averageResults = getAverageResults();
-        resultsCollector.setResults(averageResults);
         try
         {
-            resultsCollector.storeResults();
+            new ResultsRecorder(projectName).storeResults(averageResults);
         }
         catch (IOException e)
         {
@@ -264,11 +273,12 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         return (PerformanceTest) testClass.getAnnotation(PerformanceTest.class);
     }
 
-    private boolean checkIfDone(/*
-                                 * int currentPass, List<PerformanceTestResults>
-                                 * resultsList
-                                 */)
+    public boolean isTestDone()
     {
+        if (!testHasRunLongEnough())
+        {
+            return false;
+        }
         if (!warmedUp)
         {
             if (currentPass < warmupPasses)
@@ -311,9 +321,9 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             {
                 warmupPasses = configuration.warmupPasses();
             }
-            if (configuration.warmupDuration() >= 0)
+            if (configuration.warmupDurationMillis() >= 0)
             {
-                warmupDuration = configuration.warmupDuration();
+                warmupDuration = configuration.warmupDurationMillis();
             }
             if (configuration.maxPasses() >= 0)
             {
@@ -327,9 +337,9 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             {
                 runsToAverage = configuration.runsToAverage();
             }
-            if (configuration.duration() >= 0)
+            if (configuration.durationMillis() >= 0)
             {
-                expectedDuration = configuration.duration();
+                expectedDuration = configuration.durationMillis();
             }
             if (!configuration.testName().isEmpty())
             {
@@ -338,6 +348,10 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             if (!configuration.groupName().isEmpty())
             {
                 groupName = configuration.groupName();
+            }
+            if (!configuration.projectName().isEmpty())
+            {
+                projectName = configuration.projectName();
             }
         }
     }

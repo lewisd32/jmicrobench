@@ -2,6 +2,7 @@ package com.lewisd.jmicrobench;
 
 import java.util.Map;
 
+
 public interface PerformanceTestResults
 {
 
@@ -17,37 +18,25 @@ public interface PerformanceTestResults
 
     BuildInfo getBuildInfo();
 
-    Long getDurationNanos();
+    boolean hasDurationNanos();
+    long getDurationNanos();
 
-    Long getDurationMillis();
+    boolean hasNumberOfOperations();
+    long getNumberOfOperations();
 
-    Long getDurationSeconds();
+    boolean hasOperationsPerSecond();
+    double getOperationsPerSecond();
 
-    Long getNumberOfOperations();
+    boolean hasAverageLatencyNanos();
+    long getAverageLatencyNanos();
 
-    Double getOperationsPerSecond();
+    boolean hasMemoryBytes();
+    long getMemoryBytes();
 
-    Long getAverageLatencyNanos();
-
-    Long getAverageLatencyMillis();
-
-    Long getMemoryBytes();
-
-    Double getPlotableAttribute();
-
-    void setDurationNanos(Long duration);
-
-    void setNumberOfOperations(Long operations);
-
-    void addNumberOfOperations(Integer operations);
-
-    void addNumberOfOperations(Long operations);
-
-    void setOperationsPerSecond(Double opsPerSecond);
-
-    void setAverageLatencyNs(Long latency);
-
-    void setMemoryBytes(Long memory);
+    boolean hasPlottableAttribute();
+    double getPlotableAttribute();
+    
+    // Unit getPlottableAttributeUnit();
 
     Map<String, Double> asMap();
 
