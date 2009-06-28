@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="build-init" basedir=".">
+   
+    <import file="build-init.xml" />
+    <delete dir="scripts" />
+    <mkdir dir="scripts" />
+    <unzip src="lib/main/common/lewisd-common.jar" dest=".">
+        <patternset>
+            <include name="scripts/build-*.xml" />
+        </patternset>
+    </unzip>
+
+</project>
