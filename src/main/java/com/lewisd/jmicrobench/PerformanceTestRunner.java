@@ -1,15 +1,7 @@
 package com.lewisd.jmicrobench;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.sql.SQLException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
@@ -29,17 +21,17 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
     private static final int DEFAULT_RUNS_TO_AVERAGE = Integer.parseInt(PropertiesHelper.getProperty("build.performance.averaged.runs", "3"));
     private static final long DEFAULT_EXPECTED_DURATION = Long.parseLong(PropertiesHelper.getProperty("build.performance.duration", "3000"));
     private static final long DEFAULT_WARMUP_DURATION = Long.parseLong(PropertiesHelper.getProperty("build.performance.warmup.duration", "0"));
+    private static final double DEFAULT_STABILITY_PERCENTAGE= Double.parseDouble(PropertiesHelper.getProperty("build.performance.stability.percentage", "5"));
     private static final String DEFAULT_PROJECT_NAME = PropertiesHelper.getProperty("build.performance.project.name", "");
 
     private static final Logger LOG = Logger.getLogger(PerformanceTestRunner.class);
-
-    private static final int RESULTS_REMOVED_BY_PRUNING = 2;
 
     private boolean warmedUp = false;
     private int warmupPasses;
     private long warmupDuration;
     private int maxPasses;
     private int stablePasses;
+    private double stabilityPercentage;
     private int runsToAverage;
     private long expectedDuration;
     private long totalDurationNanos;
@@ -51,13 +43,17 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
     private long startTimeNanos = -1;
     private long endTimeNanos = -1;
     private int currentPass;
-    private List<PerformanceTestResults> resultsList;
-    private PerformanceTestController resultsCollector;
+    private ResultsList resultsList;
 
     public PerformanceTestRunner(Class testClass) throws InitializationError
     {
         super(testClass);
         this.testClass = testClass;
+    }
+
+    public PerformanceTestResults getAverageResults()
+    {
+        return resultsList.getAverageResults();
     }
 
     public boolean testHasRunLongEnough()
@@ -145,114 +141,18 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         };
     }
 
-    protected PerformanceTestController getResultsCollector(Object test)
-    {
-        try
-        {
-            Field resultsCollectorField = findResultsCollectorField(testClass);
-            if (resultsCollectorField != null)
-            {
-                resultsCollectorField.setAccessible(true);
-                PerformanceTestController controller = (PerformanceTestController) resultsCollectorField.get(test);
-                return controller;
-            }
-            else
-            {
-                return new PerformanceTestController();
-            }
-        }
-        catch (InitializationError e)
-        {
-            throw new RuntimeException(e);
-        }
-        catch (IllegalArgumentException e)
-        {
-            throw new RuntimeException(e);
-        }
-        catch (IllegalAccessException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static Field findResultsCollectorField(Class testClass) throws InitializationError
-    {
-        for (Class klass = testClass; klass != Object.class; klass = klass.getSuperclass())
-        {
-            for (Field field : klass.getDeclaredFields())
-            {
-                if (PerformanceTestController.class.isAssignableFrom(field.getType()))
-                {
-                    return field;
-                }
-            }
-        }
-        return null;
-    }
-    
     private void runTestUntilStable(FrameworkMethod method, Object test, Statement statement) throws Throwable
     {
-        resultsCollector = getResultsCollector(test);
-
-        this.maxPasses = DEFAULT_MAX_PASSES;
-        this.stablePasses = DEFAULT_STABLE_PASSES;
-        this.runsToAverage = DEFAULT_RUNS_TO_AVERAGE;
-        this.expectedDuration = DEFAULT_EXPECTED_DURATION;
-        this.warmupPasses = DEFAULT_WARMUP_PASSES;
-        this.warmupDuration = DEFAULT_WARMUP_DURATION;
-        this.groupName = method.getName();
-        this.testName = testClass.getSimpleName();
-        this.projectName = DEFAULT_PROJECT_NAME;
-
-        PerformanceTest configuration;
-
-        configuration = findClassAnnotation();
-        configureFromAnnotation(configuration);
-
-        configuration = method.getAnnotation(PerformanceTest.class);
-        configureFromAnnotation(configuration);
+        configure(method);
         
-        if (projectName.equals(""))
-        {
-            throw new IllegalStateException("'projectName' must be configured in jmicrobench.properties on PerformanceTest annotation");
-        }
-
-        resultsList = new LinkedList<PerformanceTestResults>();
-
-        warmedUp = false;
-        if (warmupPasses == 0 && warmupDuration == 0)
-        {
-            warmedUp = true;
-        }
+        resultsList = new ResultsList(runsToAverage, stablePasses, stabilityPercentage);
 
         currentPass = 0;
         while (!isTestDone())
         {
-            InProgressPerformanceTestResults results = new InProgressPerformanceTestResults(BuildInfoImpl.getCurrentBuild(), groupName, testName, this);
-            resultsCollector.setupTest(results, this);
-            totalDurationNanos = 0;
-            startTimeNanos = -1;
-            endTimeNanos = -1;
-            currentPass++;
-            LOG.info("Running " + (warmedUp ? "real " : "warmup ") + "pass for " + testName(method));
-            // add the results class before we run, so that it's counted by
-            // calls to isDone from within the test method
-            resultsList.add(results);
-
-            statement.evaluate();
-            while (!testHasRunLongEnough())
-            {
-                statement.evaluate();
-            }
-            
-            if (!results.hasDurationNanos())
-            {
-                results.setDurationNanos(getActualDurationNanos());
-            }
-            // LOG.info(String.format("%.0f",
-            // results.getOperationsPerSecond()));
+            runPass(method, statement);
         }
-        PerformanceTestResults averageResults = getAverageResults();
+        PerformanceTestResults averageResults = resultsList.getAverageResults();
         try
         {
             new ResultsRecorder(projectName).storeResults(averageResults);
@@ -264,6 +164,31 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         catch (SQLException e)
         {
             LOG.error("Error storing test results", e);
+        }
+    }
+
+    private void runPass(FrameworkMethod method, Statement statement) throws Throwable
+    {
+        InProgressPerformanceTestResults results = new InProgressPerformanceTestResults(BuildInfoImpl.getCurrentBuild(), groupName, testName, this);
+        PerformanceTestController.setupTest(results, this);
+        totalDurationNanos = 0;
+        startTimeNanos = -1;
+        endTimeNanos = -1;
+        currentPass++;
+        LOG.info("Running " + (warmedUp ? "real " : "warmup ") + "pass for " + testName(method));
+        // add the results class before we run, so that it's counted by
+        // calls to isDone from within the test method
+        resultsList.add(results);
+
+        statement.evaluate();
+        while (!testHasRunLongEnough())
+        {
+            statement.evaluate();
+        }
+        
+        if (!results.hasDurationNanos())
+        {
+            results.setDurationNanos(getActualDurationNanos());
         }
     }
 
@@ -285,12 +210,7 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             {
                 return false;
             }
-            long totalDurationNanos = 0;
-            for (PerformanceTestResults results : resultsList)
-            {
-                totalDurationNanos += results.getDurationNanos();
-            }
-            if (totalDurationNanos / 1000000 < warmupDuration)
+            if (TimeUnit.NANOSECONDS.toMillis(resultsList.getTotalDurationNanos()) < warmupDuration)
             {
                 return false;
             }
@@ -301,7 +221,7 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             warmedUp = true;
             currentPass = 0;
         }
-        if (isStable(resultsList) && (resultsList.size() >= runsToAverage + RESULTS_REMOVED_BY_PRUNING || runsToAverage == 0))
+        if (resultsList.isStable() && resultsList.hasEnoughResults())
         {
             return currentPass > 0;
         }
@@ -311,6 +231,44 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
         }
 
         return false;
+    }
+    
+    private void configure(FrameworkMethod method)
+    {
+        configureDefaults(method);
+
+        PerformanceTest configuratinAnnotation;
+
+        configuratinAnnotation = findClassAnnotation();
+        configureFromAnnotation(configuratinAnnotation);
+
+        configuratinAnnotation = method.getAnnotation(PerformanceTest.class);
+        configureFromAnnotation(configuratinAnnotation);
+
+        if (projectName.equals(""))
+        {
+            throw new IllegalStateException("'projectName' must be configured in jmicrobench.properties on PerformanceTest annotation");
+        }
+        
+        warmedUp = false;
+        if (warmupPasses == 0 && warmupDuration == 0)
+        {
+            warmedUp = true;
+        }
+    }
+
+    private void configureDefaults(FrameworkMethod method)
+    {
+        this.maxPasses = DEFAULT_MAX_PASSES;
+        this.stablePasses = DEFAULT_STABLE_PASSES;
+        this.stabilityPercentage = DEFAULT_STABILITY_PERCENTAGE;
+        this.runsToAverage = DEFAULT_RUNS_TO_AVERAGE;
+        this.expectedDuration = DEFAULT_EXPECTED_DURATION;
+        this.warmupPasses = DEFAULT_WARMUP_PASSES;
+        this.warmupDuration = DEFAULT_WARMUP_DURATION;
+        this.groupName = method.getName();
+        this.testName = testClass.getSimpleName();
+        this.projectName = DEFAULT_PROJECT_NAME;
     }
 
     private void configureFromAnnotation(PerformanceTest configuration)
@@ -333,6 +291,10 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             {
                 stablePasses = configuration.stablePasses();
             }
+            if (configuration.stabilityPercentage() >= 0)
+            {
+                stabilityPercentage = configuration.stabilityPercentage();
+            }
             if (configuration.runsToAverage() >= 0)
             {
                 runsToAverage = configuration.runsToAverage();
@@ -354,123 +316,6 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
                 projectName = configuration.projectName();
             }
         }
-    }
-
-    PerformanceTestResults getAverageResults()
-    {
-        Set<String> attributes = findAllAttributes(resultsList);
-        Map<String, Double> attributeAverages = new HashMap<String, Double>();
-        for (String attributeName : attributes)
-        {
-            List<Double> resultList = getResultsForAttribute(attributeName, resultsList);
-            List<Double> prunedResults;
-            if (runsToAverage > 0)
-            {
-                prunedResults = getPrunedResults(resultList, runsToAverage);
-            }
-            else
-            {
-                prunedResults = Collections.singletonList(resultList.get(resultList.size() - 1));
-            }
-            double total = 0;
-            for (Double result : prunedResults)
-            {
-                total += result;
-            }
-            double average = total / prunedResults.size();
-            // TODO: we don't want to average all attributes (like duration)
-            attributeAverages.put(attributeName, average);
-        }
-        PerformanceTestResults values = resultsList.get(0);
-        return new PerformanceTestResultsImpl(values.getBuildInfo(), values.getTestGroupName(), values.getTestName(), attributeAverages);
-    }
-
-    private boolean isStable(List<PerformanceTestResults> resultsList)
-    {
-        if (stablePasses == 0)
-        {
-            return true;
-        }
-        else if (resultsList.size() < (stablePasses + RESULTS_REMOVED_BY_PRUNING))
-        {
-            return false;
-        }
-        else
-        {
-            double stabilityPercentage = Double.parseDouble(PropertiesHelper.getProperty("build.performance.stability.percentage", "5"));
-            Set<String> attributes = findAllAttributes(resultsList);
-
-            Map<String, List<Double>> attributeResultLists = new HashMap<String, List<Double>>();
-
-            for (String attributeName : attributes)
-            {
-                List<Double> resultList = getResultsForAttribute(attributeName, resultsList);
-                attributeResultLists.put(attributeName, resultList);
-            }
-
-            for (String attributeName : attributes)
-            {
-                List<Double> resultList = attributeResultLists.get(attributeName);
-                if (!isAttributeStable(attributeName, resultList, stabilityPercentage))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
-
-    private List<Double> getResultsForAttribute(String attributeName, List<PerformanceTestResults> resultsList)
-    {
-        List<Double> resultList = new LinkedList<Double>();
-        for (PerformanceTestResults testResult : resultsList)
-        {
-            Double result = testResult.asMap().get(attributeName);
-            resultList.add(result);
-        }
-        return resultList;
-    }
-
-    private boolean isAttributeStable(String attributeName, List<Double> resultList, double stabilityPercentage)
-    {
-        LinkedList<Double> prunedResults = getPrunedResults(resultList, stablePasses);
-
-        double first = prunedResults.getFirst();
-        double last = prunedResults.getLast();
-
-        double diff = Math.abs(last - first);
-        double percent = diff * 100 / first;
-
-        if (percent <= stabilityPercentage)
-        {
-            return true;
-        }
-        else
-        {
-            LOG.info("Result for " + attributeName + " was too different: " + diff + " (" + String.format("%.2f", percent) + "%)");
-            return false;
-        }
-    }
-
-    private LinkedList<Double> getPrunedResults(List<Double> resultList, int resultCount)
-    {
-        LinkedList<Double> prunedResults = new LinkedList<Double>();
-        prunedResults.addAll(resultList.subList(resultList.size() - resultCount - RESULTS_REMOVED_BY_PRUNING, resultList.size()));
-        Collections.sort(prunedResults);
-
-        prunedResults.removeFirst();
-        prunedResults.removeLast();
-        return prunedResults;
-    }
-
-    private Set<String> findAllAttributes(List<PerformanceTestResults> resultsList)
-    {
-        Set<String> attributeNames = new HashSet<String>();
-        for (PerformanceTestResults results : resultsList)
-        {
-            attributeNames.addAll(results.asMap().keySet());
-        }
-        return attributeNames;
     }
 
 }

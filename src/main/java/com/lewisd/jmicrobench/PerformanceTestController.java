@@ -50,7 +50,7 @@ public class PerformanceTestController
         resultsThreadLocal.get().setDurationNanos(duration);
     }
 
-    void setupTest(InProgressPerformanceTestResults results, PerformanceTestRunner runner)
+    static void setupTest(InProgressPerformanceTestResults results, PerformanceTestRunner runner)
     {
         resultsThreadLocal.set(results);
         runnerThreadLocal.set(runner);
