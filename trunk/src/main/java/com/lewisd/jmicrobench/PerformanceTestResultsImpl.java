@@ -2,16 +2,21 @@ package com.lewisd.jmicrobench;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class PerformanceTestResultsImpl implements PerformanceTestResults
 {
 
-    private Long latency;
-    private Long durationNanos;
-    private Long memory;
-    private Long operations;
-    private Double opsPerSecond;
+    private boolean hasAverageLatencyNanos;
+    private long averageLatencyNanos;
+    private boolean hasDurationNanos;
+    private long durationNanos;
+    private boolean hasMemoryBytes;
+    private long memoryBytes;
+    private boolean hasNumberOfOperations;
+    private long numberOfOperations;
+    private boolean hasOperationsPerSecond;
+    private double operationsPerSecond;
+    
     private final BuildInfo buildInfo;
     private final String testGroupName;
     private final String testName;
@@ -31,53 +36,64 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
         if (map.containsKey(DURATION_NANOS))
         {
             durationNanos = map.get(DURATION_NANOS).longValue();
+            hasDurationNanos = true;
         }
         if (map.containsKey(LATENCY))
         {
-            latency = map.get(LATENCY).longValue();
+            averageLatencyNanos = map.get(LATENCY).longValue();
+            hasAverageLatencyNanos = true;
         }
         if (map.containsKey(OPERATIONS))
         {
-            operations = map.get(OPERATIONS).longValue();
+            numberOfOperations = map.get(OPERATIONS).longValue();
+            hasNumberOfOperations = true;
         }
         if (map.containsKey(OPS_PER_SECOND))
         {
-            opsPerSecond = map.get(OPS_PER_SECOND);
+            operationsPerSecond = map.get(OPS_PER_SECOND).doubleValue();
+            hasOperationsPerSecond = true;
         }
         if (map.containsKey(MEMORY))
         {
-            memory = map.get(MEMORY).longValue();
+            memoryBytes = map.get(MEMORY).longValue();
+            hasMemoryBytes = true;
         }
         calculateUnsetFields();
     }
 
     @Override
-    public Double getPlotableAttribute()
+    public double getPlotableAttribute()
     {
-        if (opsPerSecond != null)
+        if (hasOperationsPerSecond())
         {
-            return opsPerSecond;
+            return getOperationsPerSecond();
         }
-        else if (latency != null)
+        else if (hasAverageLatencyNanos())
         {
-            return latency.doubleValue();
+            return getAverageLatencyNanos();
         }
-        else if (memory != null)
+        else if (hasMemoryBytes())
         {
-            return memory.doubleValue();
+            return getMemoryBytes();
         }
-        else if (operations != null)
+        else if (hasNumberOfOperations())
         {
-            return operations.doubleValue();
+            return getNumberOfOperations();
         }
-        else if (durationNanos != null)
+        else if (hasDurationNanos())
         {
-            return durationNanos.doubleValue();
+            return getDurationNanos();
         }
         else
         {
-            return null;
+            throw new IllegalStateException("No plottable attribute has been set");
         }
+    }
+    
+    @Override
+    public boolean hasPlottableAttribute()
+    {
+        return hasOperationsPerSecond() || hasAverageLatencyNanos() || hasMemoryBytes() || hasNumberOfOperations() || hasDurationNanos();
     }
 
     public BuildInfo getBuildInfo()
@@ -96,118 +112,132 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
     }
 
     @Override
-    public Long getAverageLatencyNanos()
+    public long getAverageLatencyNanos()
     {
-        return latency;
+        if (!hasAverageLatencyNanos)
+        {
+            throw new IllegalStateException("Average latency is not set");
+        }
+        return averageLatencyNanos;
     }
 
-    @Override
-    public Long getAverageLatencyMillis()
+    public void setAverageLatencyNanos(long latency)
     {
-        return TimeUnit.NANOSECONDS.toMillis(latency);
-    }
-
-    @Override
-    public void setAverageLatencyNs(Long latency)
-    {
-        this.latency = latency;
+        averageLatencyNanos = latency;
+        hasAverageLatencyNanos = true;
         calculateUnsetFields();
     }
+    
+    @Override
+    public boolean hasAverageLatencyNanos()
+    {
+        return hasAverageLatencyNanos;
+    }
 
     @Override
-    public Long getDurationNanos()
+    public long getDurationNanos()
     {
+        if (!hasDurationNanos)
+        {
+            throw new IllegalStateException("Duration is not set");
+        }
         return durationNanos;
     }
 
-    @Override
-    public Long getDurationMillis()
-    {
-        if (durationNanos == null)
-        {
-            return null;
-        }
-        return TimeUnit.NANOSECONDS.toMillis(durationNanos);
-    }
-
-    @Override
-    public Long getDurationSeconds()
-    {
-        if (durationNanos == null)
-        {
-            return null;
-        }
-        return TimeUnit.NANOSECONDS.toSeconds(durationNanos);
-    }
-
-    @Override
-    public void setDurationNanos(Long duration)
+    public void setDurationNanos(long duration)
     {
         this.durationNanos = duration;
+        hasDurationNanos = true;
         calculateUnsetFields();
     }
-
+    
     @Override
-    public void addNumberOfOperations(Integer operations)
+    public boolean hasDurationNanos()
     {
-        addNumberOfOperations(operations.longValue());
+        return hasDurationNanos;
     }
 
     @Override
-    public void addNumberOfOperations(Long operations)
+    public long getMemoryBytes()
     {
-        if (operations == null)
+        if (!hasMemoryBytes)
         {
-            return;
+            throw new IllegalStateException("Memory is not set");
         }
-        if (this.operations == null)
+        return memoryBytes;
+    }
+
+    public void setMemoryBytes(long memory)
+    {
+        this.memoryBytes = memory;
+        hasMemoryBytes = true;
+        calculateUnsetFields();
+    }
+    
+    @Override
+    public boolean hasMemoryBytes()
+    {
+        return hasMemoryBytes;
+    }
+
+    @Override
+    public long getNumberOfOperations()
+    {
+        if (!hasNumberOfOperations)
         {
-            this.operations = operations;
+            throw new IllegalStateException("Number of operations is not set");
+        }
+        return numberOfOperations;
+    }
+
+    public void addNumberOfOperations(long operations)
+    {
+        if (!hasNumberOfOperations)
+        {
+            this.numberOfOperations = operations;
         }
         else
         {
-            this.operations += operations;
+            this.numberOfOperations = this.numberOfOperations + operations;
         }
+        hasNumberOfOperations = true;
+        calculateUnsetFields();
+    }
+    
+    public void setNumberOfOperations(long operations)
+    {
+        this.numberOfOperations = operations;
+        hasNumberOfOperations = true;
         calculateUnsetFields();
     }
 
     @Override
-    public Long getMemoryBytes()
+    public boolean hasNumberOfOperations()
     {
-        return memory;
+        return hasNumberOfOperations;
     }
 
     @Override
-    public void setMemoryBytes(Long memory)
+    public double getOperationsPerSecond()
     {
-        this.memory = memory;
+        if (!hasOperationsPerSecond)
+        {
+            throw new IllegalStateException("Operations per second is not set");
+        }
+        return operationsPerSecond;
+    }
+
+    public void setOperationsPerSecond(double opsPerSecond)
+    {
+        this.operationsPerSecond = opsPerSecond;
+        hasOperationsPerSecond = true;
         calculateUnsetFields();
     }
-
+    
     @Override
-    public Long getNumberOfOperations()
+    public boolean hasOperationsPerSecond()
     {
-        return operations;
-    }
-
-    @Override
-    public void setNumberOfOperations(Long operations)
-    {
-        this.operations = operations;
-        calculateUnsetFields();
-    }
-
-    @Override
-    public Double getOperationsPerSecond()
-    {
-        return opsPerSecond;
-    }
-
-    @Override
-    public void setOperationsPerSecond(Double opsPerSecond)
-    {
-        this.opsPerSecond = opsPerSecond;
-        calculateUnsetFields();
+        return hasOperationsPerSecond;
     }
 
     @Override
@@ -215,25 +245,25 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
     {
         calculateUnsetFields();
         Map<String, Double> map = new HashMap<String, Double>();
-        if (durationNanos != null)
+        if (hasDurationNanos())
         {
-            map.put(DURATION_NANOS, (double) durationNanos);
+            map.put(DURATION_NANOS, Double.valueOf(getDurationNanos()));
         }
-        if (latency != null)
+        if (hasAverageLatencyNanos())
         {
-            map.put(LATENCY, (double) latency);
+            map.put(LATENCY, Double.valueOf(getAverageLatencyNanos()));
         }
-        if (operations != null)
+        if (hasNumberOfOperations())
         {
-            map.put(OPERATIONS, (double) operations);
+            map.put(OPERATIONS, Double.valueOf(getNumberOfOperations()));
         }
-        if (memory != null)
+        if (hasMemoryBytes())
         {
-            map.put(MEMORY, (double) memory);
+            map.put(MEMORY, Double.valueOf(getMemoryBytes()));
         }
-        if (opsPerSecond != null)
+        if (hasOperationsPerSecond())
         {
-            map.put(OPS_PER_SECOND, opsPerSecond);
+            map.put(OPS_PER_SECOND, Double.valueOf(getOperationsPerSecond()));
         }
         return map;
     }
@@ -246,9 +276,10 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
 
     private void calculateUnsetFields()
     {
-        if (durationNanos != null && operations != null)
+        if (hasDurationNanos() && hasNumberOfOperations())
         {
-            opsPerSecond = calculateOpsPerSec(operations, durationNanos);
+            operationsPerSecond = calculateOpsPerSec(getNumberOfOperations(), getDurationNanos());
+            hasOperationsPerSecond = true;
         }
     }
 

@@ -10,11 +10,11 @@ import java.lang.annotation.Target;
 public @interface PerformanceTest
 {
 
-    long duration() default -1;
+    long durationMillis() default -1;
 
     int warmupPasses() default -1;
 
-    int warmupDuration() default -1;
+    int warmupDurationMillis() default -1;
 
     int maxPasses() default -1;
 
@@ -25,5 +25,7 @@ public @interface PerformanceTest
     String testName() default "";
 
     String groupName() default "";
+    
+    String projectName() default "";
 
 }

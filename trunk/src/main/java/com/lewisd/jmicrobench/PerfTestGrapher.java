@@ -183,7 +183,7 @@ public class PerfTestGrapher extends PerfTestResultsDumper
                 for (int ti = 0; ti < testNamesForGroup[gi].length; ++ti)
                 {
                     String testName = testNamesForGroup[gi][ti];
-                    PerformanceTestResults results = new PerformanceTestResultsImpl(build, testGroupName, testName);
+                    PerformanceTestResultsImpl results = new PerformanceTestResultsImpl(build, testGroupName, testName);
                     if (testName.equals("testB1"))
                     {
                         results.setMemoryBytes(500000000L + i * 1000);
