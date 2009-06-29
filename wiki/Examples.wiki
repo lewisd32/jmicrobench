@@ -20,7 +20,7 @@ build.performance.warmup.duration=3000
  * Wait until 3 passes have produced results within 5% of each other (stable.passes and stability.percentage)
  * If more than 100 passes are performed without getting stable results, fail the test
 
-*SomeComponentPerfTest.java*
+*!SomeComponentPerfTest.java*
 {{{
 @RunWith(PerformanceTestRunner.class)
 @PerformanceTest(groupName="Some Component Name")
