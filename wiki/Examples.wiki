@@ -48,5 +48,7 @@ public class SomeComponentPerfTest
 }}}
 
 With the above jmicrobench.properties, the each performance test pass of the testThroughput method will run it (and any @Before and @After methods) until the total recorded time spent in the method has reached 1000ms.
+
 In addition, warmup passes (passes where results are discarded, in order to warm up the JIT) will be run until here have been 3 passes performed, or the total time spent in the method reaches 3000ms.
+
 At this point, the framework will run 5 more passes (of at least 1000ms each), discarding the best and worse results, and using the remaining 3 to calculate average results.  However, if these remaining three are not within 5% of each other, it will continue to run further passes until 3 of the last 5 are within 5% of each other, or it exceeds 100 passes.
