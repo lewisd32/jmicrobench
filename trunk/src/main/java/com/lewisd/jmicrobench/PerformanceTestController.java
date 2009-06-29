@@ -49,6 +49,11 @@ public class PerformanceTestController
     {
         resultsThreadLocal.get().setDurationNanos(duration);
     }
+    
+    public void setAverageLatencyNanos(long latency)
+    {
+        resultsThreadLocal.get().setAverageLatencyNanos(latency);
+    }
 
     static void setupTest(InProgressPerformanceTestResults results, PerformanceTestRunner runner)
     {
