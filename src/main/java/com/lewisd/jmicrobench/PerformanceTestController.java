@@ -55,6 +55,10 @@ public class PerformanceTestController
         resultsThreadLocal.get().setAverageLatencyNanos(latency);
     }
 
+    public void setMemoryBytes(long memory) {
+    	resultsThreadLocal.get().setMemoryBytes(memory);
+    }
+
     static void setupTest(InProgressPerformanceTestResults results, PerformanceTestRunner runner)
     {
         resultsThreadLocal.set(results);
