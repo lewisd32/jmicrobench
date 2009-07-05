@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="grid" basedir="." default="build">
+<project name="jmicrobench" basedir="." default="build">
    
 	<import file="build-init.xml" />
     <import file="scripts/build-main.xml" />
