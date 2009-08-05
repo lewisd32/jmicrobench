@@ -221,7 +221,7 @@ public class PerformanceTestRunner extends BlockJUnit4ClassRunner
             warmedUp = true;
             currentPass = 0;
         }
-        if (resultsList.isStable() && resultsList.hasEnoughResults())
+        if (resultsList.hasEnoughResults())
         {
             return currentPass > 0;
         }

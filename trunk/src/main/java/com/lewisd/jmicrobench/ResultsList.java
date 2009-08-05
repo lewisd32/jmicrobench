@@ -56,7 +56,7 @@ public class ResultsList
         return new PerformanceTestResultsImpl(values.getBuildInfo(), values.getTestGroupName(), values.getTestName(), attributeAverages);
     }
 
-    public boolean isStable()
+    private boolean isStable()
     {
         if (stablePasses == 0)
         {
@@ -155,7 +155,13 @@ public class ResultsList
     
     public boolean hasEnoughResults()
     {
-        return resultsList.size() >= runsToAverage + RESULTS_REMOVED_BY_PRUNING || runsToAverage == 0;
+        return isStable() && hasEnoughResultsToAverage();
+    }
+
+    private boolean hasEnoughResultsToAverage()
+    {
+        int runsNeededToAverage = runsToAverage + RESULTS_REMOVED_BY_PRUNING;
+        return runsToAverage == 0 || resultsList.size() >= runsNeededToAverage;
     }
 
     public void add(InProgressPerformanceTestResults results)

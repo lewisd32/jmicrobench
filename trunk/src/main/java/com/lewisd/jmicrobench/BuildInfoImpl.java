@@ -103,7 +103,7 @@ public class BuildInfoImpl implements BuildInfo
         return -1;
     }
 
-    static BuildInfo getCurrentBuild()
+    public static BuildInfo getCurrentBuild()
     {
         if (currentBuild == null)
         {
