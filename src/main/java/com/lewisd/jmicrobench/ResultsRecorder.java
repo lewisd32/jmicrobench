@@ -23,7 +23,7 @@ public class ResultsRecorder
         this.projectName = projectName;
     }
 
-    void storeResults(PerformanceTestResults results) throws Exception
+    public void storeResults(PerformanceTestResults results) throws Exception
     {
         saveResultsAsProperties(results);
         saveResultsInDatabase(results);
