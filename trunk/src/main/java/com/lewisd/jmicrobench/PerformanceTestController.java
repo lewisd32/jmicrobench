@@ -54,7 +54,22 @@ public class PerformanceTestController
     {
         resultsThreadLocal.get().setAverageLatencyNanos(latency);
     }
+    
+    public void setMaxLatencyNanos(long latency)
+    {
+        resultsThreadLocal.get().setMaxLatencyNanos(latency);
+    }
 
+    public void setMinLatencyNanos(long latency)
+    {
+        resultsThreadLocal.get().setMinLatencyNanos(latency);
+    }
+    
+    public void setStandardDeviationLatencyNanos(double latency)
+    {
+        resultsThreadLocal.get().setStandardDeviationLatencyNanos(latency);
+    }
+    
     public void setMemoryBytes(long memory) {
     	resultsThreadLocal.get().setMemoryBytes(memory);
     }

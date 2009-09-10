@@ -56,7 +56,4 @@ public class InProgressPerformanceTestResults extends PerformanceTestResultsImpl
     {
         return true;
     }
-    
-    
-
 }

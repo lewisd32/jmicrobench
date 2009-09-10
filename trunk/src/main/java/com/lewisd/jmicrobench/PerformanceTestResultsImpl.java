@@ -20,6 +20,12 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
     private final BuildInfo buildInfo;
     private final String testGroupName;
     private final String testName;
+    long maxLatencyNanos;
+    boolean hasMaxLatencyNanos;
+    long minLatencyNanos;
+    boolean hasMinLatencyNanos;
+    double standardDeviationLatencyNanos;
+    boolean hasStandardDeviationLatencyNanos;
 
     public PerformanceTestResultsImpl(BuildInfo buildInfo, String testGroupName, String testName)
     {
@@ -42,6 +48,21 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
         {
             averageLatencyNanos = map.get(LATENCY).longValue();
             hasAverageLatencyNanos = true;
+        }
+        if (map.containsKey(MIN_LATENCY))
+        {
+            minLatencyNanos = map.get(MIN_LATENCY).longValue();
+            hasMinLatencyNanos = true;
+        }
+        if (map.containsKey(MAX_LATENCY))
+        {
+            maxLatencyNanos = map.get(MAX_LATENCY).longValue();
+            hasMaxLatencyNanos = true;
+        }
+        if (map.containsKey(STD_DEV_LATENCY))
+        {
+            standardDeviationLatencyNanos = map.get(STD_DEV_LATENCY).longValue();
+            hasStandardDeviationLatencyNanos = true;
         }
         if (map.containsKey(OPERATIONS))
         {
@@ -134,6 +155,69 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
         return hasAverageLatencyNanos;
     }
 
+    public void setMaxLatencyNanos(long latency)
+    {
+        maxLatencyNanos = latency;
+        hasMaxLatencyNanos = true;
+        calculateUnsetFields();
+    }
+
+    public boolean hasMaxLatencyNanos()
+    {
+        return hasMaxLatencyNanos;
+    }
+    
+    public long getMaxLatencyNanos()
+    {
+        if (!hasMaxLatencyNanos)
+        {
+            throw new IllegalStateException("Max Latency is not set");
+        }
+        return maxLatencyNanos;
+    }
+
+    public void setMinLatencyNanos(long latency)
+    {
+        minLatencyNanos = latency;
+        hasMinLatencyNanos = true;
+        calculateUnsetFields();
+    }
+
+    public boolean hasMinLatencyNanos()
+    {
+        return hasMinLatencyNanos;
+    }
+    
+    public long getMinLatencyNanos()
+    {
+        if (!hasMinLatencyNanos)
+        {
+            throw new IllegalStateException("Min Latency is not set");
+        }
+        return minLatencyNanos;
+    }
+
+    public void setStandardDeviationLatencyNanos(double latency)
+    {
+        standardDeviationLatencyNanos = latency;
+        hasStandardDeviationLatencyNanos = true;
+        calculateUnsetFields();
+    }
+    
+    public boolean hasStandardDeviationLatencyNanos()
+    {
+        return hasMaxLatencyNanos;
+    }
+    
+    public double getStandardDeviationLatencyNanos()
+    {
+        if (!hasStandardDeviationLatencyNanos)
+        {
+            throw new IllegalStateException("Standard Deviation Latency is not set");
+        }
+        return standardDeviationLatencyNanos;
+    }
+    
     @Override
     public long getDurationNanos()
     {
@@ -143,7 +227,7 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
         }
         return durationNanos;
     }
-
+    
     public void setDurationNanos(long duration)
     {
         this.durationNanos = duration;
@@ -252,6 +336,18 @@ public class PerformanceTestResultsImpl implements PerformanceTestResults
         if (hasAverageLatencyNanos())
         {
             map.put(LATENCY, Double.valueOf(getAverageLatencyNanos()));
+        }
+        if (hasMinLatencyNanos())
+        {
+            map.put(MIN_LATENCY, Double.valueOf(getMinLatencyNanos()));
+        }
+        if (hasMaxLatencyNanos())
+        {
+            map.put(MAX_LATENCY, Double.valueOf(getMaxLatencyNanos()));
+        }
+        if (hasStandardDeviationLatencyNanos())
+        {
+            map.put(STD_DEV_LATENCY, Double.valueOf(getStandardDeviationLatencyNanos()));
         }
         if (hasNumberOfOperations())
         {
