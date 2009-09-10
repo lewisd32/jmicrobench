@@ -10,6 +10,9 @@ public interface PerformanceTestResults
     static final String MEMORY = "memory";
     static final String OPERATIONS = "operations";
     static final String LATENCY = "latency";
+    static final String MAX_LATENCY = "max_latency";
+    static final String MIN_LATENCY = "min_latency";
+    static final String STD_DEV_LATENCY = "std_dev_latency";
     static final String DURATION_NANOS = "duration_nanos";
 
     String getTestGroupName();
@@ -39,5 +42,17 @@ public interface PerformanceTestResults
     // Unit getPlottableAttributeUnit();
 
     Map<String, Double> asMap();
+
+    public boolean hasMaxLatencyNanos();
+
+    public long getMaxLatencyNanos();
+
+    public boolean hasMinLatencyNanos();
+
+    public long getMinLatencyNanos();
+
+    public boolean hasStandardDeviationLatencyNanos();
+
+    public double getStandardDeviationLatencyNanos();
 
 }
