@@ -29,5 +29,7 @@ public @interface PerformanceTest
     String groupName() default "";
     
     String projectName() default "";
+    
+    String runBeforesAndAftersEachPass() default "";
 
 }
