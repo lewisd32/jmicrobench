@@ -35,30 +35,6 @@ public class PerformanceTestRunnerTest
     private int shouldRunForAtLeastSpecifiedDurationWithLoopInTestMethod = 0;
     private int shouldRunForAtLeastSpecifiedDurationWithNoLoopInTestMethodCounter = 0;
     
-    private static int setupRuns = 0;
-    private static int teardownRuns = 0;
-    
-    @BeforeClass
-    public static void beforeClass()
-    {
-        setupRuns = 0;
-        teardownRuns = 0;
-    }
-
-    @Before
-    public void setUp()
-    {
-        LOGGER.info("Running setUp");
-        ++setupRuns;
-    }
-    
-    @After
-    public void tearDown()
-    {
-        LOGGER.info("Running tearDown");
-        ++teardownRuns;
-    }
-
     @Test
     @PerformanceTest(durationMillis = DURATION, runsToAverage = 1, stablePasses = 1)
     public void shouldRunForAtLeastSpecifiedDurationWithLoopInTestMethod() throws Exception
@@ -421,13 +397,13 @@ public class PerformanceTestRunnerTest
         PerformanceTestResults results = controller.getResults();
 
         controller.startDurationTimer();
-        Thread.sleep(1000);
+        Thread.sleep(1001);
         controller.stopDurationTimer();
 
         Thread.sleep(1000);
 
         controller.startDurationTimer();
-        Thread.sleep(1000);
+        Thread.sleep(1001);
         controller.stopDurationTimer();
 
         long duration = TimeUnit.NANOSECONDS.toMillis(results.getDurationNanos());
@@ -466,53 +442,4 @@ public class PerformanceTestRunnerTest
             Assert.assertEquals(13, shouldRunForMaxPassesAfterWarmupDurationCounter);
         }
     }
-    
-    @Test
-    @PerformanceTest(durationMillis = 0, runsToAverage = 1, stablePasses = 0)
-    public void shouldRunSetupForEachPass() throws Exception
-    {
-        LOGGER.info("in shouldRunSetupForEachPass");
-        if (controller.isTestDone())
-        {
-            Assert.assertEquals(3, setupRuns);
-        }
-    }
-
-    @Test
-    @PerformanceTest(durationMillis = 0, runsToAverage = 1, stablePasses = 0)
-    public void shouldRunTeardownForEachPass() throws Exception
-    {
-        if (controller.isTestDone())
-        {
-            Assert.assertEquals(2, teardownRuns);
-        }
-    }
-
-    @Test
-    @PerformanceTest(durationMillis = 0, runsToAverage = 1, stablePasses = 0, runBeforesAndAftersEachPass="false")
-    public void shouldRunSetupOnlyOnce() throws Exception
-    {
-        LOGGER.info("in shouldRunSetupOnlyOnce");
-        if (controller.isTestDone())
-        {
-            Assert.assertEquals(1, setupRuns);
-        }
-    }
-
-    @Test
-    @PerformanceTest(durationMillis = 0, runsToAverage = 1, stablePasses = 0, runBeforesAndAftersEachPass="false")
-    public void shouldRunTeardownOnlyOnce() throws Exception
-    {
-        if (controller.isTestDone())
-        {
-            Assert.assertEquals(0, teardownRuns);
-        }
-    }
-
-
-    public class DummyException extends Exception
-    {
-        // intentionally empty
-    }
-
 }
