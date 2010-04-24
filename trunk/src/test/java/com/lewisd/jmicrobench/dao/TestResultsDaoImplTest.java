@@ -125,7 +125,7 @@ public class TestResultsDaoImplTest
         build4Results2 = setupResults(build4, "group1", "testB");
         build4Results3 = setupResults(build4, "group2", "testA");
 
-        String url = "jdbc:mysql://wedge/testresults?autoReconnect=true";
+        String url = "jdbc:mysql://localhost/testresults?autoReconnect=true";
         Properties properties = new Properties();
         properties.setProperty("user", "lewisd");
         dao = new TestResultsDaoImpl("test", new Driver(), url, properties);
