@@ -1,0 +1,1 @@
+Easily write microbenchmarks using a JUnit runner to run warmup passes to ensure the JIT has compiled the code being tested, and return average results from a number of passes.
